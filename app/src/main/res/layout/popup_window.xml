@@ -19,7 +19,7 @@
             android:layout_height="wrap_content"
             android:padding="15sp"
             android:textSize="25dp"
-            android:textColor="@color/white"
+            android:textColor="@color/red"
             android:textStyle="bold"
             android:text="This is a sample popup window." />
 
@@ -30,6 +30,13 @@
             android:layout_alignParentTop="true"
             android:padding="5sp" />
 
+        <TextView
+            android:id="@+id/namePelicula"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="25sp"
+            android:textColor="@color/red"
+             />
         <TextView
             android:id="@+id/textPelicula"
             android:layout_width="wrap_content"
@@ -44,7 +51,7 @@
         android:id="@+id/ib_close"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:src="@drawable/ic_baseline_search"
+        android:src="@drawable/ic_baseline_close_24"
         android:layout_alignParentEnd="true"
         android:layout_alignParentRight="true"
         android:background="@null"

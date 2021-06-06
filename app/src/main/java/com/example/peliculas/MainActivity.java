@@ -1,10 +1,12 @@
 package com.example.peliculas;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.annotation.SuppressLint;
@@ -24,6 +26,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
@@ -31,9 +34,11 @@ import com.example.peliculas.Models.Movies;
 import com.example.peliculas.Models.results;
 import com.example.peliculas.dataAccess.RetrofitClientInstance;
 import com.example.peliculas.dataAccess.endpoints;
+import com.google.gson.JsonArray;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.w3c.dom.Text;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,7 +56,13 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
 	private SearchView searchViewTitle;
 	PopupWindow popUp;
 	boolean click = true;
+	List<results> peliculas = new ArrayList<>();
 	private ConstraintLayout constraintLayout;
+	private int pages = 1,totalPublication, totalPages;
+	private String urlapiImage = "https://image.tmdb.org/t/p/w185/";
+	private boolean isLoading = false;
+	JSONArray pelicuasnews = new JSONArray();
+	private ProgressBar progressBar;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -65,7 +76,61 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
 		mRecyclerView.setHasFixedSize(true);
 		searchViewTitle = findViewById(R.id.searchViewTitle);
 		searchViewTitle.setOnQueryTextListener(this);
-		cargarPeliculasPopulares();
+		progressBar = findViewById(R.id.progressBar);
+		cargarPeliculasPopulares(pages);
+
+		mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+			@Override
+			public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+				super.onScrollStateChanged(recyclerView, newState);
+				int stateScroll = recyclerView.getScrollState();
+				boolean canScroll = recyclerView.canScrollVertically(1);
+				int firstItem = ((LinearLayoutManager) recyclerView.getLayoutManager()).findFirstCompletelyVisibleItemPosition();
+				int lastItem = ((LinearLayoutManager) recyclerView.getLayoutManager()).findLastCompletelyVisibleItemPosition();
+
+				if (stateScroll == RecyclerView.SCROLL_STATE_IDLE ) {
+
+					Log.v("Llego", "llego1");
+
+
+					if(lastItem == (totalPublication - 1) && firstItem != 0 ){
+						if ((totalPublication - 1) == lastItem && pages < totalPages  ){
+							progressBar.setVisibility(View.VISIBLE);
+							pages ++;
+							cargarPeliculasPopulares(pages);
+
+						}else {
+							progressBar.setVisibility(View.GONE);
+						}
+					}else if(firstItem == 0){
+						if (pages > 1){
+							progressBar.setVisibility(View.VISIBLE);
+							pages --;
+							cargarPeliculasPopulares(pages);
+						}else {
+							progressBar.setVisibility(View.GONE);
+						}
+					}
+
+
+
+
+				}else{
+
+
+					/*
+					if (pages > 0){
+						pages --;
+						cargarPeliculasPopulares(pages);
+					}
+
+					 */
+					Log.v("Llego", "llego2");
+				}
+			}
+		});
+
+
 	}
 
 	@Override
@@ -82,34 +147,30 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
 		return false;
 	}
 
-	private void cargarPeliculasPopulares() {
+	private void cargarPeliculasPopulares(int page) {
 		String apiKey = "a65d435b94f33462d56b8b5300c7827d";
+		isLoading = true;
 		endpoints endpoints = RetrofitClientInstance.getRetrofitInstance().create(endpoints.class);
-		Call<Movies> movieResultCallback = endpoints.getPopular(apiKey);
+		Call<Movies> movieResultCallback = endpoints.getPopular(apiKey,page);
 		// asynchronous call
 		movieResultCallback.enqueue(new Callback<Movies>() {
 			@Override
 			public void onResponse(Call<Movies> call, Response<Movies> response) {
-
-
-
-				//int code = response.code();
-				// can check the status code
-				Log.v("String ", String.valueOf(response.body()));
 				Movies results = response.body();
 				results.getResults();
-				Log.v(" Movies ", String.valueOf(results.getResults()));
-				//mAdapter.setMovieList(response.body().getResults());
-				adapter = new RecyclerViewAdapterClass(results.getResults());
-				mRecyclerView.setAdapter(adapter);
+
+					totalPages = results.getTotal_pages();
+					totalPublication = results.getResults().size();
+					adapter = new RecyclerViewAdapterClass(results.getResults());
+					mRecyclerView.setAdapter(adapter);
+				progressBar.setVisibility(View.GONE);
 
 
 			}
 
 			@Override
 			public void onFailure(Call<Movies> call, Throwable t) {
-				Log.v("String ", String.valueOf(call));
-				Log.v("String ", String.valueOf(t));
+				Log.v("Error ", String.valueOf(t));
 			}
 		});
 
@@ -118,7 +179,6 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
 	public class RecyclerViewAdapterClass extends RecyclerView.Adapter<RecyclerViewAdapterClass.MyViewHolder> implements Filterable {
 		private List<results> ArrayListUnits;
 		private List<results> filteredNameList;
-		String[] values;
 
 		public RecyclerViewAdapterClass(List<results> modelList) {
 			ArrayListUnits = modelList;
@@ -136,14 +196,12 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
 		public void onBindViewHolder(final RecyclerViewAdapterClass.MyViewHolder holder, int position) {
 			final results model = filteredNameList.get(position);
 			//holder.textView.setText( model.getTitle());
-			String urlapi = "https://image.tmdb.org/t/p/w185/";
 			String urlMovie = model.getBackdropPath();
 			Glide.with(MainActivity.this)
-					.load(urlapi + urlMovie)
+					.load(urlapiImage + urlMovie)
 					.centerCrop()
 					.into(holder.imageView);
 
-			//	https://image.tmdb.org/t/p/w185/{{movies.poster_path}}
 
 			holder.imageView.setOnClickListener(new View.OnClickListener() {
 				@Override
@@ -172,16 +230,18 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
 					TextView textPeliculas = customView.findViewById(R.id.textPeliculas);
 					TextView textPelicula = customView.findViewById(R.id.textPelicula);
 					ImageView img = customView.findViewById(R.id.img);
+					TextView namePelicula = customView.findViewById(R.id.namePelicula);
 
 					textPeliculas.setText(filteredNameList.get(position).getTitle());
-					String urlapi = "https://image.tmdb.org/t/p/w185/";
+
 					String urlMovie = filteredNameList.get(position).getBackdropPath();
 					Glide.with(MainActivity.this)
-							.load(urlapi + urlMovie)
+							.load(urlapiImage + urlMovie)
 							.centerCrop()
 							.into(img);
 
 					textPelicula.setText(filteredNameList.get(position).getOverview());
+					namePelicula.setText(filteredNameList.get(position).getOriginalTitle());
 
 					// Set a click listener for the popup window close button
 					closeButton.setOnClickListener(new View.OnClickListener() {
@@ -192,25 +252,10 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
 						}
 					});
 
-                /*
-                    public void showAtLocation (View parent, int gravity, int x, int y)
-                        Display the content view in a popup window at the specified location. If the
-                        popup window cannot fit on screen, it will be clipped.
-                        Learn WindowManager.LayoutParams for more information on how gravity and the x
-                        and y parameters are related. Specifying a gravity of NO_GRAVITY is similar
-                        to specifying Gravity.LEFT | Gravity.TOP.
-
-                    Parameters
-                        parent : a parent view to get the getWindowToken() token from
-                        gravity : the gravity which controls the placement of the popup window
-                        x : the popup's x location offset
-                        y : the popup's y location offset
-                */
-					// Finally, show the popup window at the center location of root relative layout
 					popUp.showAtLocation(constraintLayout, Gravity.CENTER,0,0);
 				}
 			});
-
+ 				holder.nameMovie.setText(model.getOriginalTitle());
 
 		}
 
@@ -252,11 +297,13 @@ public class MainActivity extends AppCompatActivity implements SearchView.OnQuer
 		public class MyViewHolder extends RecyclerView.ViewHolder {
 			private View view;
 			private ImageView imageView;
+			private TextView nameMovie;
 
 			private MyViewHolder(View itemView) {
 				super(itemView);
 				view = itemView;
 				imageView =  itemView.findViewById(R.id.info_text);
+				nameMovie =  itemView.findViewById(R.id.nameMovie);
 
 
 
