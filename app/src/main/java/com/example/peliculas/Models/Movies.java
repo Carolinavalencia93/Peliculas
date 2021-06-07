@@ -1,14 +1,17 @@
 package com.example.peliculas.Models;
 
+
+
 import java.util.List;
+
 
 public class Movies {
 
 	private int page;
-	private List<results> results;
+	private List<Results> results;
 	private int total_pages;
 
-	public Movies(int page, List<results> results) {
+	public Movies(int page, List<Results> results) {
 		this.page = page;
 		this.results = results;
 	}
@@ -29,11 +32,11 @@ public class Movies {
 		this.page = page;
 	}
 
-	public List<com.example.peliculas.Models.results> getResults() {
+	public List<Results> getResults() {
 		return results;
 	}
 
-	public void setResults(List<com.example.peliculas.Models.results> results) {
+	public void setResults(List<Results> results) {
 		this.results = results;
 	}
 }
